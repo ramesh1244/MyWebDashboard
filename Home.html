@@ -1,85 +1,1382 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Web Page</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        header {
-            background: #35424a;
-            color: #ffffff;
-            padding: 20px;
-            text-align: center;
-        }
-        nav {
-            background: #333;
-            color: #fff;
-            padding: 10px;
-            text-align: center;
-        }
-        nav a {
-            color: #fff;
-            text-decoration: none;
-            margin: 0 15px;
-        }
-        .container {
-            width: 80%;
-            margin: 20px auto;
-            overflow: hidden;
-            background: #fff;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        footer {
-            background: #35424a;
-            color: #ffffff;
-            text-align: center;
-            padding: 15px;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrgSync Dashboard - Product Metrics</title>
+  <script src="chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg1: #f7fbff;
+      --bg2: #eaf4ff;
+      --bg3: #dcecff;
+      --bg4: #f4fbff;
+      --panel: rgba(255, 255, 255, 0.86);
+      --panel-solid: #f8fbff;
+      --text: #032d60;
+      --text-dark: #032d60;
+      --muted: #5f7ea5;
+      --line: rgba(1, 118, 211, 0.18);
+      --good: #0176d3;
+      --warn: #0b5cab;
+      --accent: #00a1e0;
+      --green: #21d19f;
+      --amber: #ffb020;
+      --red: #e2445c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 12%, rgba(1, 118, 211, 0.12) 0, transparent 28%),
+        radial-gradient(circle at 85% 18%, rgba(0, 161, 224, 0.12) 0, transparent 28%),
+        radial-gradient(circle at 40% 85%, rgba(1, 118, 211, 0.08) 0, transparent 30%),
+        linear-gradient(170deg, var(--bg1) 0%, var(--bg2) 36%, var(--bg3) 74%, var(--bg4) 100%);
+      min-height: 100vh;
+      padding: 18px;
+      overflow-x: hidden;
+    }
+    body::before, body::after {
+      content: "";
+      position: fixed;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      z-index: -1;
+      pointer-events: none;
+      filter: blur(24px);
+      animation: floatGlow 12s ease-in-out infinite;
+    }
+    body::before { left: -80px; top: 20%; background: rgba(0, 161, 224, 0.22); }
+    body::after { right: -90px; bottom: 8%; background: rgba(1, 118, 211, 0.2); animation-delay: -5s; }
+    h1, h2, h3, p { margin: 0; }
+    .layout { display: grid; gap: 14px; max-width: 1500px; margin: 0 auto; }
+    .glass {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 10px 24px rgba(1, 118, 211, 0.1);
+      padding: 14px;
+      transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+      animation: fadeSlideUp 420ms ease both;
+    }
+    .glass:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 28px rgba(1, 118, 211, 0.16);
+      border-color: rgba(1, 118, 211, 0.35);
+    }
+    .hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; align-items: stretch; }
+    .title { font-size: 30px; font-weight: 800; letter-spacing: 0.2px; line-height: 1.1; margin-bottom: 8px; }
+    .sub { color: var(--muted); line-height: 1.45; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: linear-gradient(135deg, #ffffff, #f3f9ff);
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+    .kpi:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 8px 16px rgba(1, 118, 211, 0.12); }
+    .kpi .label { font-size: 12px; color: var(--muted); }
+    .kpi .value { font-size: 24px; font-weight: 800; color: #014486; margin-top: 4px; }
+    .kpi .sub-value { font-size: 11px; color: var(--green); font-weight: 700; margin-top: 2px; }
+    .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-top: 10px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input, select { width: 100%; border-radius: 10px; border: 1px solid var(--line); padding: 8px 10px; background: #ffffff; color: #032d60; font: inherit; }
+    option { color: #022b5a; }
+    .row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+    .row3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+    .card-title { margin-bottom: 8px; font-weight: 700; }
+    .card-note { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .table-shell { background: var(--panel-solid); border-radius: 14px; border: 1px solid #d1e5ff; color: var(--text-dark); overflow: auto; max-height: 420px; }
+    .table-shell.tall { max-height: 560px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 8px; border-bottom: 1px solid #e4efff; text-align: left; vertical-align: top; }
+    th { background: #edf5ff; position: sticky; top: 0; z-index: 2; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.empty { color: var(--muted); text-align: center; padding: 16px; }
+    tr:hover td { background: #f4faff; }
+    a { color: #0b5cab; }
+    .pill { display: inline-block; border-radius: 999px; border: 1px solid #a2c9f7; background: #eff7ff; color: #1a5ca0; padding: 2px 8px; font-size: 11px; }
+    .pill.cdc { border-color: #9ad0c0; background: #eafaf5; color: #0b7a5b; }
+    .pill.pe { border-color: #f2cf9a; background: #fff6e8; color: #9a6516; }
+    .dir { font-size: 11px; color: var(--muted); }
+    .neg { color: var(--red); }
+    .activity {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(145deg, #ffffff, #f4f9ff);
+      padding: 10px;
+      min-height: 92px;
+      transition: transform 200ms ease, box-shadow 200ms ease;
+    }
+    .activity:hover { transform: translateY(-3px); box-shadow: 0 10px 16px rgba(1, 118, 211, 0.14); }
+    .activity .top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .activity .emoji { font-size: 18px; }
+    .activity .name { font-weight: 700; font-size: 13px; }
+    .activity .desc { font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .ribbon {
+      display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; padding: 6px 12px;
+      border-radius: 999px; background: linear-gradient(90deg, #d8ecff, #eaf6ff);
+      border: 1px solid #9fc7f2; color: #014486; font-size: 12px; font-weight: 700;
+    }
+    .ribbon .ic { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; background: #0176d3; color: #fff; }
+    .g4g-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px; }
+    .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+    .stat {
+      border-radius: 12px; padding: 10px; text-align: center; color: #fff;
+      box-shadow: 0 8px 16px rgba(1, 118, 211, 0.12);
+    }
+    .stat .st-val { font-size: 22px; font-weight: 800; }
+    .stat .st-lab { font-size: 11px; opacity: 0.95; margin-top: 2px; }
+    .stat.init { background: linear-gradient(135deg, #0176d3, #00a1e0); }
+    .stat.synced { background: linear-gradient(135deg, #17a673, #21d19f); }
+    .stat.err { background: linear-gradient(135deg, #d88012, #ffb020); }
+    .stat.miss { background: linear-gradient(135deg, #c23a50, #e2445c); }
+    .save-banner {
+      display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 16px;
+      border-radius: 14px; background: linear-gradient(120deg, #eafaf5, #f3f9ff);
+      border: 1px solid #a9e0cd;
+    }
+    .save-banner .amt { font-size: 28px; font-weight: 800; color: #0b7a5b; }
+    .save-banner .cap { font-size: 12px; color: var(--muted); }
+    .timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; }
+    .tl-card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+      background: linear-gradient(145deg, #ffffff, #f4f9ff);
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+    .tl-card:hover { transform: translateY(-2px); box-shadow: 0 10px 16px rgba(1, 118, 211, 0.12); }
+    .tl-card.progress { border-color: #f2cf9a; background: linear-gradient(145deg, #fffdf7, #fff6e8); }
+    .tl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .tl-name { font-weight: 800; font-size: 13px; color: #014486; }
+    .tl-count { font-size: 11px; color: var(--muted); }
+    .tl-items { font-size: 12px; color: var(--text); line-height: 1.5; }
+    .tag { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+    .tag.wip { background: #fff0d6; color: #9a6516; border: 1px solid #f2cf9a; }
+    .legend-note { font-size: 12px; color: var(--muted); margin: 2px 0 10px; }
+    .section-label { font-size: 13px; font-weight: 800; color: #0b5cab; text-transform: uppercase; letter-spacing: 0.6px; margin: 4px 0; }
+    .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 6px 0 2px; }
+    .hero-image {
+      width: 100%;
+      margin-top: 12px;
+      border-radius: 12px;
+      border: 1px solid #c8def8;
+      box-shadow: 0 8px 16px rgba(1, 118, 211, 0.1);
+    }
+    .dashboard-status {
+      margin-bottom: 10px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid #b8d8fb;
+      background: #eef7ff;
+      color: #0b5cab;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .dashboard-status.error { border-color: #f1b4bf; background: #fff1f4; color: #a6273c; }
+    .dashboard-status.ok { border-color: #a9e0cd; background: #eafaf5; color: #0b7a5b; }
+    .workbook-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .workbook-button, .auth-button {
+      appearance: none;
+      border: 1px solid #0b5cab;
+      background: #0176d3;
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(1, 118, 211, 0.16);
+    }
+    .workbook-button:hover, .auth-button:hover { background: #0b5cab; }
+    .workbook-button:disabled, .auth-button:disabled { cursor: not-allowed; opacity: 0.55; box-shadow: none; }
+    .file-input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+    .workbook-name { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .is-hidden { display: none !important; }
+    @keyframes floatGlow { 0%, 100% { transform: translateY(0) scale(1); opacity: 0.85; } 50% { transform: translateY(-18px) scale(1.05); opacity: 1; } }
+    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 900px) { .hero, .g4g-grid { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
+  <div class="layout">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="glass">
+        <h1 class="title" id="dashboardTitle">OrgSync Dashboard — Product Metrics</h1>
+        <p class="sub is-hidden" id="dashboardSubtitle"></p>
+        <img id="heroImage" class="hero-image is-hidden" alt="Orgs Connected using OrgSync">
+      </div>
+      <div class="glass">
+        <h3 class="card-title">Headline Metrics</h3>
+        <div class="kpis" id="heroKpis"></div>
+      </div>
+    </section>
 
-    <header>
-        <h1>Welcome to My Sample Website</h1>
-    </header>
+    <!-- FILTERS -->
+    <section class="glass">
+      <h3 class="card-title">Interactive Filters</h3>
+      <p class="card-note">Filters apply to the Product Utilisation table and volume charts below.</p>
+      <div class="workbook-actions is-hidden" id="workbookActions">
+        <label class="workbook-button" for="xlsxFile">Choose XLSX Workbook</label>
+        <input class="file-input" id="xlsxFile" type="file" accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+        <span class="workbook-name" id="workbookName">No workbook selected</span>
+      </div>
+      <div class="workbook-actions is-hidden" id="authActions">
+        <button class="auth-button" id="authorizeSheets" type="button">Connect Google Sheets</button>
+      </div>
+      <div class="dashboard-status is-hidden" id="loadStatus"></div>
+      <div class="control-grid">
+        <div>
+          <label>Object contains</label>
+          <input id="objectFilter" placeholder="Case, Contact, Tenant">
+        </div>
+        <div>
+          <label>Direction</label>
+          <select id="directionFilter">
+            <option value="all">All</option>
+            <option value="forward">Org62 → OrgCS</option>
+            <option value="reverse">OrgCS → Org62</option>
+            <option value="bi">Bi-directional</option>
+          </select>
+        </div>
+        <div>
+          <label>Publisher / Subscriber</label>
+          <select id="pubFilter">
+            <option value="all">All</option>
+            <option value="CDC">CDC</option>
+            <option value="PE">PE</option>
+          </select>
+        </div>
+        <div>
+          <label>Dependent team contains</label>
+          <input id="teamFilter" placeholder="Product Success, Self Service">
+        </div>
+      </div>
+    </section>
 
-    <nav>
-        <a href="#">Home</a>
-        <a href="#">About</a>
-        <a href="#">Services</a>
-        <a href="#">Contact</a>
-    </nav>
+    <!-- ORGSYNC WEEKLY PROCESSED EVENT COUNT (SLACK LIST) -->
+    <section class="glass">
+      <h3 class="card-title">All OrgSync Integrations Metrics - 3 months</h3>
+      <p class="card-note is-hidden" id="outsideSourceNote">Source: <a id="outsideSourceLink" href="#" target="_blank" rel="noopener noreferrer">Slack list view</a></p>
+      <div class="table-shell">
+        <table id="outsideSlackTable">
+          <thead><tr><th>Integration Name</th><th class="num">Total Processed (Sum)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
 
-    <div class="container">
-        <main>
-            <section>
-                <h2>About This Page</h2>
-                <p>This is a foundational HTML5 template designed to showcase basic semantic formatting structure and internal CSS layout styling.</p>
-            </section>
-            
-            <section>
-                <h2>Key Components Included</h2>
-                <ul>
-                    <li><strong>Semantic Structure:</strong> Organized using header, nav, main, section, and footer elements.</li>
-                    <li><strong>Responsive Layout:</strong> Meta tags ensure proper rendering on mobile and desktop viewports.</li>
-                    <li><strong>Embedded CSS:</strong> Simple, clean styling variables handle fonts, margins, and core block alignment.</li>
-                </ul>
-            </section>
-        </main>
-    </div>
+    <!-- ORG62 ↔ ORGCS INTEGRATION THEME -->
+    <section class="glass">
+      <h3 class="card-title">Org62 ↔ OrgCS Integration Metrics</h3>
+      <p class="card-note">Unified view for product utilisation, actual 3-month volume, and Mule app distribution.</p>
 
-    <footer>
-        <p>&copy; 2026 Sample Web Page Project. All Rights Reserved.</p>
-    </footer>
+      <div class="glass" style="margin-top:8px;">
+        <h3 class="card-title">Product Utilisation Metrics — Org62 ↔ OrgCS (Peak Load Supported vs Actual Load)</h3>
+        <p class="card-note">Peak load is the supported throughput per hour; Actual 3-Month Total is the real volume processed over the last three months.</p>
+        <div class="table-shell tall">
+          <table id="utilTable">
+            <thead>
+              <tr>
+                <th>Object &amp; Direction</th>
+                <th>Pub/Sub</th>
+                <th class="num">No. of Apps</th>
+                <th class="num">Peak Load / hr</th>
+                <th>Dependent Team</th>
+                <th class="num">Actual 3-Month Total</th>
+                <th class="num">Per Hour Load (Actual / 90 / 24)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
 
+      <div class="row2" style="margin-top:12px;">
+        <div class="glass">
+          <h3 class="card-title">Actual 3-Month Volume by Object</h3>
+          <canvas id="volChart"></canvas>
+        </div>
+        <div class="glass">
+          <h3 class="card-title"># of Mule Apps per Object</h3>
+          <canvas id="appsChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- OPERATIONS METRICS -->
+    <section class="glass">
+      <h3 class="card-title">Operations Metrics — Critical Activities supported by the OrgSync Framework team</h3>
+      <div class="row3" id="opsCards"></div>
+    </section>
+
+    <!-- G4G ATM SYNC -->
+    <section class="glass">
+      <h3 class="card-title" id="g4gTitle">G4G ATM Sync using OrgSync+</h3>
+      <p class="card-note is-hidden" id="g4gNote"></p>
+      <div class="g4g-grid">
+        <div>
+          <div class="section-label">Activity Details</div>
+          <div class="table-shell">
+            <table id="g4gTable">
+              <thead><tr><th>Metric</th><th class="num">Records</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="save-banner">
+            <div class="amt" id="g4gSavingsAmount">-</div>
+            <div>
+              <div style="font-weight:700;" id="g4gSavingsTitle">Savings via OrgSync+</div>
+              <div class="cap" id="g4gSavingsCaption"></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-label">OrgSync Statistics</div>
+          <div class="stat-strip" id="g4gStats"></div>
+          <div style="height:12px;"></div>
+          <canvas id="g4gStatChart" height="150"></canvas>
+        </div>
+      </div>
+
+      <div style="height:14px;"></div>
+      <div class="row2">
+        <div>
+          <div class="section-label">Error Distribution</div>
+          <div class="table-shell">
+            <table id="errTable">
+              <thead><tr><th>Type of Error</th><th class="num"># Records</th><th class="num">%</th><th>Top Contributor</th><th>Resolution</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADOPTIONS -->
+    <section class="glass">
+      <h3 class="card-title">OrgSync Adoptions — Orgs Connected to OrgCS &amp; the wider estate</h3>
+      <div class="kpis" id="adoptionKpis" style="margin-bottom:12px;"></div>
+      <p class="legend-note"><span class="tag wip">In Progress</span> denotes adoptions currently being onboarded.</p>
+      <div class="timeline" id="adoptionTimeline"></div>
+    </section>
+
+    <section class="glass">
+      <h3 class="card-title">Integrations No Longer Supported</h3>
+      <div class="table-shell">
+        <table id="retiredTable">
+          <thead><tr><th>Org Pair</th><th>Retired Objects &amp; Timeline</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="foot" id="footerText">OrgSync Dashboard — Product Metrics · Built from Google Sheets.</div>
+  </div>
+
+  <script>
+    // ---------- Data source configuration ----------
+    const SHEET_CONFIG = {
+      source: {
+        // "appsScript" = hosted dashboard reads a private/internal Google Sheet through Apps Script.
+        mode: "appsScript",
+        // Paste your Apps Script Web App /exec URL here after deployment.
+        appsScriptUrl: "PASTE_APPS_SCRIPT_WEB_APP_URL_HERE"
+      },
+      tabs: {
+        settings: "Dashboard Settings",
+        heroKpis: "Headline Metrics",
+        utilisation: "Product Utilisation",
+        outsideSlackList: "All OrgSync Integrations",
+        operations: "Operations",
+        g4gActivity: "G4G Activity",
+        g4gStats: "G4G Stats",
+        g4gErrors: "G4G Errors",
+        adoptionsSummary: "Adoptions Summary",
+        adoptionsTimeline: "Adoptions Timeline",
+        retiredIntegrations: "Retired Integrations"
+      }
+    };
+
+    // ---------- State and helpers ----------
+    const charts = {};
+    const emptyData = () => ({
+      heroKpis: [],
+      utilisation: [],
+      outsideSlackList: [],
+      operations: [],
+      g4g: { activity: [], stats: [], errors: [] },
+      adoptions: { summary: { orgsLive: 0, orgsWip: 0, objectsLive: 0, objectsWip: 0 }, timeline: [], retired: [] }
+    });
+    let data = emptyData();
+    let settings = {};
+    let tokenClient = null;
+    let hasOAuthConsent = false;
+    let appsScriptReqId = 0;
+    const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
+    window.orgsyncAppsScriptCallbacks = window.orgsyncAppsScriptCallbacks || {};
+
+    const cleanKey = (v) => String(v ?? "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "");
+    const toNum = (v) => Number(String(v ?? "").replace(/[^0-9.-]/g, "")) || 0;
+    const fmt = (n) => Math.round(n).toLocaleString();
+    const compact = (n) => {
+      const value = toNum(n);
+      if (Math.abs(value) >= 1e6) return `${Number((value / 1e6).toFixed(1)).toLocaleString()}M`;
+      if (Math.abs(value) >= 1e3) return `${Number((value / 1e3).toFixed(0)).toLocaleString()}K`;
+      return fmt(value);
+    };
+    const escapeHtml = (v) => String(v ?? "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+    const rowHasContent = (row) => Object.values(row).some((v) => String(v ?? "").trim() !== "");
+    const reader = (row) => {
+      const normalized = {};
+      Object.entries(row || {}).forEach(([key, value]) => {
+        normalized[cleanKey(key)] = value;
+      });
+      return (...aliases) => {
+        for (const alias of aliases) {
+          const key = cleanKey(alias);
+          if (Object.prototype.hasOwnProperty.call(normalized, key) && String(normalized[key] ?? "").trim() !== "") return normalized[key];
+        }
+        return "";
+      };
+    };
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    const setStatus = (message, tone = "") => {
+      const el = document.getElementById("loadStatus");
+      if (!el) return;
+      if (!message) {
+        el.className = "dashboard-status is-hidden";
+        el.textContent = "";
+        return;
+      }
+      el.className = `dashboard-status ${tone}`.trim();
+      el.textContent = message;
+    };
+    const setWorkbookName = (name) => {
+      const el = document.getElementById("workbookName");
+      if (el) el.textContent = name || "No workbook selected";
+    };
+    const showAuthActions = (show, disabled = false) => {
+      const actions = document.getElementById("authActions");
+      const button = document.getElementById("authorizeSheets");
+      if (actions) actions.classList.toggle("is-hidden", !show);
+      if (button) button.disabled = disabled;
+    };
+    const showWorkbookActions = (show) => {
+      const actions = document.getElementById("workbookActions");
+      if (actions) actions.classList.toggle("is-hidden", !show);
+    };
+    const emptyRow = (colspan) => `<tr><td class="empty" colspan="${colspan}">No rows loaded from the workbook.</td></tr>`;
+    const setTableRows = (selector, html, colspan) => {
+      const el = document.querySelector(selector);
+      if (el) el.innerHTML = html || emptyRow(colspan);
+    };
+    const setting = (...keys) => {
+      for (const key of keys) {
+        const value = settings[cleanKey(key)];
+        if (String(value ?? "").trim() !== "") return value;
+      }
+      return "";
+    };
+    const toBool = (v) => {
+      if (typeof v === "boolean") return v;
+      if (typeof v === "number") return v !== 0;
+      const s = cleanKey(v);
+      return ["1", "true", "yes", "y", "x", "checked", "live", "wip", "inprogress", "forward", "reverse", "both", "bidirectional"].includes(s);
+    };
+    const inferDirection = (text) => {
+      const raw = String(text ?? "").toLowerCase();
+      const compacted = raw.replace(/\s+/g, "");
+      if (raw.includes("bi") || raw.includes("both")) return { fwd: true, rev: true };
+      return {
+        fwd: raw.includes("forward") || /org62(→|->|>|to)orgcs/.test(compacted),
+        rev: raw.includes("reverse") || /orgcs(→|->|>|to)org62/.test(compacted)
+      };
+    };
+    const statClass = (stat) => {
+      const key = cleanKey(`${stat.key} ${stat.label}`);
+      if (key.includes("init")) return "init";
+      if (key.includes("sync")) return "synced";
+      if (key.includes("err")) return "err";
+      if (key.includes("miss")) return "miss";
+      return "";
+    };
+    const directionOf = (r) => {
+      if (r.fwd && r.rev) return "Bi-directional";
+      if (r.fwd) return "Org62 → OrgCS";
+      if (r.rev) return "OrgCS → Org62";
+      return "N/A";
+    };
+    const opsIcon = (t) => {
+      const s = String(t ?? "").toLowerCase();
+      if (s.includes("data sync")) return "🔄";
+      if (s.includes("sandbox")) return "🧪";
+      if (s.includes("instance")) return "🚚";
+      if (s.includes("monitor")) return "📡";
+      if (s.includes("g4g")) return "🤝";
+      if (s.includes("agent")) return "🤖";
+      return "🧰";
+    };
+    function upsert(id, type, chartData, options = {}) {
+      if (!window.Chart) return;
+      if (charts[id]) charts[id].destroy();
+      charts[id] = new Chart(document.getElementById(id), {
+        type, data: chartData,
+        options: { responsive: true, animation: { duration: 900, easing: "easeOutQuart" }, ...options }
+      });
+    }
+
+    // ---------- Source mode ----------
+    function getSourceMode() {
+      return String(SHEET_CONFIG.source?.mode || SHEET_CONFIG.auth?.mode || "localXlsx").trim().toLowerCase();
+    }
+
+    // ---------- Google Sheets loader ----------
+    function getConfiguredSheetSource() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("sheetId") || params.get("sheet") || params.get("sheetUrl") || SHEET_CONFIG.defaultSheetUrl;
+    }
+
+    function getConfiguredSpreadsheetId() {
+      const params = new URLSearchParams(window.location.search);
+      const explicit = params.get("spreadsheetId") || SHEET_CONFIG.spreadsheetId;
+      if (explicit) return String(explicit).trim();
+      const raw = String(getConfiguredSheetSource() ?? "").trim();
+      const normalMatch = raw.match(/\/spreadsheets\/d\/(?!e\/)([^/]+)/);
+      if (normalMatch) return normalMatch[1];
+      if (raw && !raw.startsWith("2PACX-") && !raw.includes("/")) return raw;
+      return "";
+    }
+
+    function getConfiguredTabs() {
+      const params = new URLSearchParams(window.location.search);
+      const tabs = { ...SHEET_CONFIG.tabs };
+      Object.keys(tabs).forEach((key) => {
+        const override = params.get(`${key}Tab`);
+        if (override) tabs[key] = override;
+      });
+      return tabs;
+    }
+
+    function getSheetBase(input) {
+      const raw = String(input ?? "").trim();
+      if (!raw) return "";
+      const publishedMatch = raw.match(/\/spreadsheets\/d\/e\/([^/]+)/);
+      if (publishedMatch) return `https://docs.google.com/spreadsheets/d/e/${publishedMatch[1]}/gviz/tq`;
+      const normalMatch = raw.match(/\/spreadsheets\/d\/([^/]+)/);
+      if (normalMatch) return `https://docs.google.com/spreadsheets/d/${normalMatch[1]}/gviz/tq`;
+      if (raw.startsWith("2PACX-")) return `https://docs.google.com/spreadsheets/d/e/${raw}/gviz/tq`;
+      return `https://docs.google.com/spreadsheets/d/${raw}/gviz/tq`;
+    }
+
+    const gvizPending = new Map();
+    let gvizReqId = 0;
+    window.google = window.google || {};
+    window.google.visualization = window.google.visualization || {};
+    window.google.visualization.Query = window.google.visualization.Query || {};
+    window.google.visualization.Query.setResponse = (response) => {
+      const reqId = String(response?.reqId ?? "");
+      const pending = gvizPending.get(reqId);
+      if (!pending) return;
+      gvizPending.delete(reqId);
+      pending.cleanup();
+      if (response?.status === "ok") {
+        pending.resolve(gvizTableToRows(response.table));
+      } else {
+        const message = (response?.errors || []).map((e) => e.detailed_message || e.message || e.reason).filter(Boolean).join("; ");
+        pending.reject(new Error(message || "Google Sheets returned an error."));
+      }
+    };
+
+    function gvizTableToRows(table) {
+      const headers = (table?.cols || []).map((col, index) => String(col.label || col.id || `Column ${index + 1}`).trim());
+      return (table?.rows || []).map((row) => {
+        const out = {};
+        headers.forEach((header, index) => {
+          const cell = row.c?.[index];
+          out[header] = cell?.v ?? cell?.f ?? "";
+        });
+        return out;
+      }).filter(rowHasContent);
+    }
+
+    function loadSheetRows(baseUrl, tabName) {
+      return new Promise((resolve, reject) => {
+        const reqId = String(++gvizReqId);
+        const script = document.createElement("script");
+        const timeout = window.setTimeout(() => {
+          gvizPending.delete(reqId);
+          script.remove();
+          reject(new Error(`Timed out loading the "${tabName}" sheet.`));
+        }, 15000);
+        const cleanup = () => {
+          window.clearTimeout(timeout);
+          script.remove();
+        };
+        gvizPending.set(reqId, { resolve, reject, cleanup });
+        const url = new URL(baseUrl);
+        url.searchParams.set("tqx", `out:json;reqId:${reqId}`);
+        url.searchParams.set("sheet", tabName);
+        url.searchParams.set("headers", "1");
+        script.onerror = () => {
+          gvizPending.delete(reqId);
+          cleanup();
+          reject(new Error(`Could not load the "${tabName}" sheet. Confirm the Google Sheet is public or published to the web.`));
+        };
+        script.src = url.toString();
+        document.head.appendChild(script);
+      });
+    }
+
+    async function loadWorkbook() {
+      const source = getConfiguredSheetSource();
+      const baseUrl = getSheetBase(source);
+      if (!baseUrl) throw new Error("Google Sheet source is not configured.");
+
+      const tabs = getConfiguredTabs();
+
+      const entries = await Promise.allSettled(Object.entries(tabs).map(async ([key, tabName]) => [key, await loadSheetRows(baseUrl, tabName)]));
+      const rowsByKey = {};
+      const missing = [];
+      entries.forEach((result, index) => {
+        const key = Object.keys(tabs)[index];
+        if (result.status === "fulfilled") rowsByKey[result.value[0]] = result.value[1];
+        else missing.push(tabs[key]);
+      });
+      const nextData = mapWorkbookRows(rowsByKey);
+      const loadedRowCount = Object.values(rowsByKey).reduce((sum, rows) => sum + rows.length, 0);
+      if (!loadedRowCount) throw new Error("No rows were returned from the configured Google Sheet. Confirm it is a native Google Sheet, the tabs exist, and the file is public or published to the web.");
+      settings = parseSettings(rowsByKey.settings || []);
+      return { nextData, missing };
+    }
+
+    // ---------- OAuth / private Google Sheets loader ----------
+    function getOAuthClientId() {
+      return String(SHEET_CONFIG.auth?.oauthClientId ?? "").trim();
+    }
+
+    function getAuthMode() {
+      return getSourceMode();
+    }
+
+    function isOAuthConfigured() {
+      const clientId = getOAuthClientId();
+      return clientId && !clientId.includes("PASTE") && !clientId.includes("YOUR_");
+    }
+
+    function waitForGoogleIdentity() {
+      return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const check = () => {
+          if (window.google?.accounts?.oauth2) {
+            resolve();
+            return;
+          }
+          attempts += 1;
+          if (attempts > 80) {
+            reject(new Error("Google sign-in library did not load. Check network access or content security settings."));
+            return;
+          }
+          window.setTimeout(check, 100);
+        };
+        check();
+      });
+    }
+
+    async function requestSheetsAccessToken() {
+      if (!isOAuthConfigured()) {
+        throw new Error("OAuth mode is enabled, but SHEET_CONFIG.auth.oauthClientId is empty.");
+      }
+      await waitForGoogleIdentity();
+      if (!tokenClient) {
+        tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: getOAuthClientId(),
+          scope: SHEETS_SCOPE,
+          callback: () => {}
+        });
+      }
+      return new Promise((resolve, reject) => {
+        tokenClient.callback = (response) => {
+          if (response?.error) {
+            reject(new Error(response.error_description || response.error));
+            return;
+          }
+          if (!response?.access_token) {
+            reject(new Error("Google sign-in did not return an access token."));
+            return;
+          }
+          hasOAuthConsent = true;
+          resolve(response.access_token);
+        };
+        tokenClient.requestAccessToken({ prompt: hasOAuthConsent ? "" : "consent" });
+      });
+    }
+
+    function toA1SheetRange(sheetName) {
+      return `'${String(sheetName).replace(/'/g, "''")}'`;
+    }
+
+    function valuesToRows(values) {
+      const rows = Array.isArray(values) ? values : [];
+      const headers = (rows[0] || []).map((header, index) => String(header || `Column ${index + 1}`).trim());
+      return rows.slice(1).map((row) => {
+        const out = {};
+        headers.forEach((header, index) => {
+          out[header] = row[index] ?? "";
+        });
+        return out;
+      }).filter(rowHasContent);
+    }
+
+    async function loadSheetRowsOAuth(spreadsheetId, tabName, accessToken) {
+      const range = encodeURIComponent(toA1SheetRange(tabName));
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${range}?majorDimension=ROWS`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = payload?.error?.message || `Google Sheets API returned ${response.status}.`;
+        throw new Error(`Could not load "${tabName}": ${message}`);
+      }
+      return valuesToRows(payload.values || []);
+    }
+
+    async function loadWorkbookOAuth(accessToken) {
+      const spreadsheetId = getConfiguredSpreadsheetId();
+      if (!spreadsheetId) throw new Error("OAuth mode needs SHEET_CONFIG.spreadsheetId set to the normal Google Sheet ID.");
+      const tabs = getConfiguredTabs();
+      const entries = await Promise.allSettled(Object.entries(tabs).map(async ([key, tabName]) => [key, await loadSheetRowsOAuth(spreadsheetId, tabName, accessToken)]));
+      const rowsByKey = {};
+      const missing = [];
+      entries.forEach((result, index) => {
+        const key = Object.keys(tabs)[index];
+        if (result.status === "fulfilled") rowsByKey[result.value[0]] = result.value[1];
+        else missing.push(`${tabs[key]} (${result.reason?.message || "not loaded"})`);
+      });
+      const nextData = mapWorkbookRows(rowsByKey);
+      const loadedRowCount = Object.values(rowsByKey).reduce((sum, rows) => sum + rows.length, 0);
+      if (!loadedRowCount) throw new Error(`No rows were returned from Google Sheets API. ${missing.join("; ")}`);
+      settings = parseSettings(rowsByKey.settings || []);
+      return { nextData, missing };
+    }
+
+    // ---------- Local XLSX loader ----------
+    function ensureXlsxParser() {
+      if (!window.XLSX) {
+        throw new Error("The XLSX parser did not load. Check internet access for the SheetJS CDN script, or host xlsx.full.min.js locally.");
+      }
+    }
+
+    function sheetToRowsXlsx(workbook, tabName) {
+      const sheet = workbook.Sheets[tabName];
+      if (!sheet) throw new Error(`Missing tab "${tabName}".`);
+      return XLSX.utils.sheet_to_json(sheet, {
+        defval: "",
+        raw: false,
+        blankrows: false
+      }).filter(rowHasContent);
+    }
+
+    function mapXlsxWorkbook(workbook) {
+      const tabs = getConfiguredTabs();
+      const rowsByKey = {};
+      const missing = [];
+      Object.entries(tabs).forEach(([key, tabName]) => {
+        try {
+          rowsByKey[key] = sheetToRowsXlsx(workbook, tabName);
+        } catch (error) {
+          missing.push(error.message || tabName);
+        }
+      });
+      const nextData = mapWorkbookRows(rowsByKey);
+      const loadedRowCount = Object.values(rowsByKey).reduce((sum, rows) => sum + rows.length, 0);
+      if (!loadedRowCount) throw new Error(`No rows were returned from the selected workbook. ${missing.join(" ")}`);
+      settings = parseSettings(rowsByKey.settings || []);
+      return { nextData, missing };
+    }
+
+    async function loadWorkbookXlsxFile(file) {
+      ensureXlsxParser();
+      if (!file) throw new Error("No workbook selected.");
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+      return mapXlsxWorkbook(workbook);
+    }
+
+    async function loadWorkbookXlsxUrl(url) {
+      ensureXlsxParser();
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Could not load workbook from ${url}.`);
+      const buffer = await response.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+      return mapXlsxWorkbook(workbook);
+    }
+
+    // ---------- Apps Script loader ----------
+    function getAppsScriptUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return String(params.get("appsScriptUrl") || SHEET_CONFIG.source?.appsScriptUrl || "").trim();
+    }
+
+    function rowsPayloadToDashboardData(payload) {
+      if (!payload?.ok) throw new Error(payload?.error || "Apps Script returned an error.");
+      const rowsByKey = payload.rowsByKey || {};
+      const nextData = mapWorkbookRows(rowsByKey);
+      const loadedRowCount = Object.values(rowsByKey).reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
+      if (!loadedRowCount) throw new Error("Apps Script returned no rows. Confirm the spreadsheet ID and tab names.");
+      settings = parseSettings(rowsByKey.settings || []);
+      return { nextData, missing: payload.missing || [] };
+    }
+
+    function loadWorkbookAppsScript() {
+      const endpoint = getAppsScriptUrl();
+      if (!endpoint || endpoint.includes("PASTE_")) {
+        throw new Error("Apps Script mode is enabled. Paste your Web App /exec URL into SHEET_CONFIG.source.appsScriptUrl.");
+      }
+      return new Promise((resolve, reject) => {
+        const id = `cb${++appsScriptReqId}`;
+        const callbackName = `orgsyncAppsScriptCallbacks.${id}`;
+        const script = document.createElement("script");
+        const cleanup = () => {
+          delete window.orgsyncAppsScriptCallbacks[id];
+          script.remove();
+          window.clearTimeout(timeout);
+        };
+        const timeout = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Timed out loading data from Apps Script."));
+        }, 20000);
+        window.orgsyncAppsScriptCallbacks[id] = (payload) => {
+          try {
+            cleanup();
+            resolve(rowsPayloadToDashboardData(payload));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        const url = new URL(endpoint);
+        url.searchParams.set("callback", callbackName);
+        url.searchParams.set("_", String(Date.now()));
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("Could not load the Apps Script endpoint. Check the Web App URL and deployment access."));
+        };
+        script.src = url.toString();
+        document.head.appendChild(script);
+      });
+    }
+
+    // ---------- Sheet row mapping ----------
+    function mapWorkbookRows(rowsByKey) {
+      return {
+        heroKpis: mapHeroKpis(rowsByKey.heroKpis || []),
+        utilisation: mapUtilisation(rowsByKey.utilisation || []),
+        outsideSlackList: mapOutsideSlack(rowsByKey.outsideSlackList || []),
+        operations: mapOperations(rowsByKey.operations || []),
+        g4g: {
+          activity: mapG4gActivity(rowsByKey.g4gActivity || []),
+          stats: mapG4gStats(rowsByKey.g4gStats || []),
+          errors: mapG4gErrors(rowsByKey.g4gErrors || [])
+        },
+        adoptions: {
+          summary: mapAdoptionSummary(rowsByKey.adoptionsSummary || []),
+          timeline: mapAdoptionTimeline(rowsByKey.adoptionsTimeline || []),
+          retired: mapRetired(rowsByKey.retiredIntegrations || [])
+        }
+      };
+    }
+
+    function parseSettings(rows) {
+      const out = {};
+      rows.forEach((row) => {
+        const get = reader(row);
+        const key = get("Key", "Setting", "Name");
+        const value = get("Value", "Text", "URL", "Amount");
+        if (key) out[cleanKey(key)] = value;
+      });
+      if (!Object.keys(out).length && rows[0]) {
+        Object.entries(rows[0]).forEach(([key, value]) => {
+          if (String(value ?? "").trim() !== "") out[cleanKey(key)] = value;
+        });
+      }
+      return out;
+    }
+
+    function mapHeroKpis(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        return { label: get("Label", "Metric", "Name"), value: get("Value", "Amount", "Count"), sub: get("Sub", "Subtitle", "Caption", "Note") };
+      }).filter((r) => r.label);
+    }
+
+    function mapUtilisation(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        const object = get("Object", "Object Name", "Object & Direction", "Object Direction");
+        const directionText = `${get("Direction", "Sync Direction", "Object & Direction", "Object Direction")} ${object}`.toLowerCase();
+        let fwd = toBool(get("Fwd", "Forward", "Org62 to OrgCS", "Org62 -> OrgCS", "Org62 → OrgCS"));
+        let rev = toBool(get("Rev", "Reverse", "OrgCS to Org62", "OrgCS -> Org62", "OrgCS → Org62"));
+        if (!fwd && !rev) {
+          const inferred = inferDirection(directionText);
+          fwd = inferred.fwd;
+          rev = inferred.rev;
+        }
+        return {
+          object,
+          fwd,
+          rev,
+          pub: String(get("Pub/Sub", "Pub Sub", "Publisher / Subscriber", "Publisher Subscriber", "Pub")).toUpperCase(),
+          apps: toNum(get("No. of Apps", "# of Apps", "Apps", "Mule Apps")),
+          peak: toNum(get("Peak Load / hr", "Peak Load", "Peak Per Hour", "Peak")),
+          team: get("Dependent Team", "Team", "Owner Team"),
+          actual3m: toNum(get("Actual 3-Month Total", "Actual 3 Month Total", "3-Month Records", "Actual Load", "Actual"))
+        };
+      }).filter((r) => r.object);
+    }
+
+    function mapOutsideSlack(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        return {
+          integrationName: get("Integration Name", "Integration", "Name"),
+          totalProcessedSum: toNum(get("Total Processed (Sum)", "Total Processed Sum", "Total Processed", "Records", "Value"))
+        };
+      }).filter((r) => r.integrationName);
+    }
+
+    function mapOperations(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        return { heading: get("Heading", "Activity", "Name", "Title"), description: get("Description", "Details", "Summary") };
+      }).filter((r) => r.heading || r.description);
+    }
+
+    function mapG4gActivity(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        return { label: get("Metric", "Label", "Name"), value: toNum(get("Records", "Value", "Count")) };
+      }).filter((r) => r.label);
+    }
+
+    function mapG4gStats(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        const label = get("Label", "Metric", "Name");
+        return { key: cleanKey(get("Key", "Class", "Status") || label), label, pct: toNum(get("%", "Pct", "Percent", "Percentage", "Value")) };
+      }).filter((r) => r.label);
+    }
+
+    function mapG4gErrors(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        return {
+          type: get("Type of Error", "Error Type", "Type"),
+          records: toNum(get("# Records", "Records", "Count")),
+          pct: toNum(get("%", "Pct", "Percent", "Percentage")),
+          contributor: get("Top Contributor", "Contributor", "Cause"),
+          resolution: get("Resolution", "Action", "Fix")
+        };
+      }).filter((r) => r.type);
+    }
+
+    function mapAdoptionSummary(rows) {
+      const summary = { orgsLive: 0, orgsWip: 0, objectsLive: 0, objectsWip: 0 };
+      if (!rows.length) return summary;
+      const first = reader(rows[0]);
+      summary.orgsLive = toNum(first("Orgs Live", "Orgs Connected Live", "Org Pairs Live", "orgsLive"));
+      summary.orgsWip = toNum(first("Orgs WIP", "Orgs In Progress", "Org Pairs WIP", "orgsWip"));
+      summary.objectsLive = toNum(first("Objects Live", "Objects Connected Live", "objectsLive"));
+      summary.objectsWip = toNum(first("Objects WIP", "Objects In Progress", "objectsWip"));
+      rows.forEach((row) => {
+        const get = reader(row);
+        const key = cleanKey(get("Metric", "Key", "Name"));
+        const value = toNum(get("Value", "Count", "Number"));
+        if (!key) return;
+        if (key.includes("org") && key.includes("live")) summary.orgsLive = value;
+        if (key.includes("org") && (key.includes("wip") || key.includes("progress"))) summary.orgsWip = value;
+        if (key.includes("object") && key.includes("live")) summary.objectsLive = value;
+        if (key.includes("object") && (key.includes("wip") || key.includes("progress"))) summary.objectsWip = value;
+      });
+      return summary;
+    }
+
+    function mapAdoptionTimeline(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        return {
+          pair: get("Org Pair", "Pair", "Integration", "Name"),
+          items: get("Objects & Timeline", "Retired Objects & Timeline", "Objects", "Timeline", "Items", "Details"),
+          wip: toBool(get("In Progress", "WIP", "Status"))
+        };
+      }).filter((r) => r.pair || r.items);
+    }
+
+    function mapRetired(rows) {
+      return rows.map((row) => {
+        const get = reader(row);
+        return {
+          pair: get("Org Pair", "Pair", "Integration", "Name"),
+          items: get("Retired Objects & Timeline", "Objects & Timeline", "Objects", "Timeline", "Items", "Details")
+        };
+      }).filter((r) => r.pair || r.items);
+    }
+
+    function applySettings() {
+      const title = setting("Dashboard Title", "Title") || "OrgSync Dashboard — Product Metrics";
+      document.title = title;
+      setText("dashboardTitle", title);
+      const subtitle = setting("Dashboard Subtitle", "Subtitle");
+      const subtitleEl = document.getElementById("dashboardSubtitle");
+      if (subtitleEl) {
+        subtitleEl.textContent = subtitle;
+        subtitleEl.classList.toggle("is-hidden", !subtitle);
+      }
+      const heroUrl = setting("Hero Image URL", "Hero Image", "Image URL");
+      const heroImage = document.getElementById("heroImage");
+      if (heroImage) {
+        heroImage.classList.toggle("is-hidden", !heroUrl);
+        if (heroUrl) heroImage.src = heroUrl;
+      }
+      const sourceUrl = setting("Outside Source URL", "Slack Source URL", "Source URL");
+      const sourceLabel = setting("Outside Source Label", "Slack Source Label", "Source Label") || "Slack list view";
+      const sourceNote = document.getElementById("outsideSourceNote");
+      const sourceLink = document.getElementById("outsideSourceLink");
+      if (sourceNote && sourceLink) {
+        sourceNote.classList.toggle("is-hidden", !sourceUrl);
+        sourceLink.href = sourceUrl || "#";
+        sourceLink.textContent = sourceLabel;
+      }
+      setText("g4gTitle", setting("G4G Title") || "G4G ATM Sync using OrgSync+");
+      const g4gNote = setting("G4G Note");
+      const g4gNoteEl = document.getElementById("g4gNote");
+      if (g4gNoteEl) {
+        g4gNoteEl.textContent = g4gNote;
+        g4gNoteEl.classList.toggle("is-hidden", !g4gNote);
+      }
+      setText("g4gSavingsAmount", setting("G4G Savings Amount", "Savings Amount") || "-");
+      setText("g4gSavingsTitle", setting("G4G Savings Title", "Savings Title") || "Savings via OrgSync+");
+      setText("g4gSavingsCaption", setting("G4G Savings Caption", "Savings Caption") || "");
+      setText("footerText", setting("Footer Text", "Footer") || "OrgSync Dashboard — Product Metrics · Built from Google Sheets.");
+    }
+
+    // ---------- Filters ----------
+    function getFilters() {
+      return {
+        objectQ: document.getElementById("objectFilter").value.trim().toLowerCase(),
+        direction: document.getElementById("directionFilter").value,
+        pub: document.getElementById("pubFilter").value,
+        teamQ: document.getElementById("teamFilter").value.trim().toLowerCase()
+      };
+    }
+    function filterUtil() {
+      const f = getFilters();
+      return data.utilisation.filter((r) => {
+        if (f.objectQ && !String(r.object).toLowerCase().includes(f.objectQ)) return false;
+        if (f.pub !== "all" && r.pub !== f.pub) return false;
+        if (f.teamQ && !String(r.team).toLowerCase().includes(f.teamQ)) return false;
+        const dir = directionOf(r);
+        if (f.direction === "forward" && dir !== "Org62 → OrgCS") return false;
+        if (f.direction === "reverse" && dir !== "OrgCS → Org62") return false;
+        if (f.direction === "bi" && dir !== "Bi-directional") return false;
+        return true;
+      });
+    }
+
+    // ---------- Renderers ----------
+    function renderHeroKpis() {
+      const cards = data.heroKpis.length ? data.heroKpis : buildDerivedHeroKpis();
+      document.getElementById("heroKpis").innerHTML = cards.map((c) =>
+        `<div class="kpi"><div class="label">${escapeHtml(c.label)}</div><div class="value">${escapeHtml(c.value)}</div><div class="sub-value">${escapeHtml(c.sub)}</div></div>`
+      ).join("");
+    }
+
+    function buildDerivedHeroKpis() {
+      const totalApps = data.utilisation.reduce((s, r) => s + toNum(r.apps), 0);
+      const total3m = data.utilisation.reduce((s, r) => s + Math.abs(toNum(r.actual3m)), 0);
+      const peakMax = data.utilisation.reduce((max, r) => Math.max(max, toNum(r.peak)), 0);
+      const a = data.adoptions.summary;
+      const cards = [
+        { label: "Orgs Connected to OrgCS", value: a.orgsLive || "-", sub: a.orgsWip ? `+${a.orgsWip} in progress` : "" },
+        { label: "Objects Synced", value: a.objectsLive || "-", sub: a.objectsWip ? `+${a.objectsWip} in progress` : "" },
+        { label: "Peak Load Supported / hr", value: peakMax ? compact(peakMax) : "-", sub: "Org62 ↔ OrgCS" },
+        { label: "Total Mule Apps", value: totalApps || "-", sub: "across integrations" },
+        { label: "3-Month Records", value: total3m ? `${compact(total3m)}+` : "-", sub: "actual processed" }
+      ];
+      const agentCoverage = setting("Agent CS Ticket Coverage", "Agent Coverage");
+      const savings = setting("G4G Savings Amount", "Savings Amount");
+      if (agentCoverage) cards.push({ label: "Agent CS Ticket Coverage", value: agentCoverage, sub: "OrgSync Agent" });
+      if (savings) cards.push({ label: "G4G ATM Savings", value: savings, sub: "via OrgSync+" });
+      return cards;
+    }
+
+    function renderUtilTable(rows) {
+      const html = rows.map((r) => {
+        const dir = directionOf(r);
+        const pubCls = r.pub === "CDC" ? "cdc" : r.pub === "PE" ? "pe" : "";
+        const actualAbs = Math.abs(r.actual3m);
+        const hourlyLoad = actualAbs / 90 / 24;
+        return `<tr>
+          <td><strong>${escapeHtml(r.object)}</strong><div class="dir">${escapeHtml(dir)}</div></td>
+          <td><span class="pill ${pubCls}">${escapeHtml(r.pub)}</span></td>
+          <td class="num">${r.apps}</td>
+          <td class="num">${fmt(r.peak)}</td>
+          <td>${escapeHtml(r.team)}</td>
+          <td class="num">${fmt(actualAbs)}</td>
+          <td class="num">${hourlyLoad.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+        </tr>`;
+      }).join("");
+      setTableRows("#utilTable tbody", html, 7);
+    }
+
+    function renderVolCharts(rows) {
+      const sorted = [...rows].sort((a, b) => Math.abs(b.actual3m) - Math.abs(a.actual3m));
+      upsert("volChart", "bar", {
+        labels: sorted.map((r) => r.object),
+        datasets: [{ label: "Actual 3-Month Volume", data: sorted.map((r) => Math.abs(r.actual3m)), backgroundColor: "#21d19f" }]
+      }, {
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { autoSkip: false, maxRotation: 90, minRotation: 90, font: { size: 10 } } }, y: { beginAtZero: true } }
+      });
+      upsert("appsChart", "bar", {
+        labels: rows.map((r) => r.object),
+        datasets: [{ label: "No. of Apps", data: rows.map((r) => r.apps), backgroundColor: "#0176d3" }]
+      }, {
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { autoSkip: false, maxRotation: 90, minRotation: 90, font: { size: 10 } } }, y: { beginAtZero: true } }
+      });
+    }
+
+    function renderOutsideSlackList() {
+      const html = data.outsideSlackList.map((r) =>
+        `<tr><td><strong>${escapeHtml(r.integrationName)}</strong></td><td class="num">${fmt(r.totalProcessedSum)}</td></tr>`
+      ).join("");
+      setTableRows("#outsideSlackTable tbody", html, 2);
+    }
+
+    function renderOps() {
+      document.getElementById("opsCards").innerHTML = data.operations.map((a) =>
+        `<div class="activity"><div class="top"><span class="emoji">${opsIcon(a.heading)}</span><span class="name">${escapeHtml(a.heading)}</span></div><div class="desc">${escapeHtml(a.description)}</div></div>`
+      ).join("") || `<div class="activity"><div class="desc">No rows loaded from the workbook.</div></div>`;
+    }
+
+    function renderG4G() {
+      setTableRows("#g4gTable tbody", data.g4g.activity.map((r) =>
+        `<tr><td>${escapeHtml(r.label)}</td><td class="num">${fmt(r.value)}</td></tr>`
+      ).join(""), 2);
+
+      document.getElementById("g4gStats").innerHTML = data.g4g.stats.map((s) =>
+        `<div class="stat ${statClass(s)}"><div class="st-val">${s.pct}%</div><div class="st-lab">${escapeHtml(s.label)}</div></div>`
+      ).join("") || `<div class="activity"><div class="desc">No rows loaded from the workbook.</div></div>`;
+
+      upsert("g4gStatChart", "bar", {
+        labels: data.g4g.stats.map((s) => s.label),
+        datasets: [{ data: data.g4g.stats.map((s) => s.pct), backgroundColor: ["#0176d3", "#21d19f", "#ffb020", "#e2445c"] }]
+      }, {
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.parsed.y}%` } } },
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + "%" } } }
+      });
+
+      setTableRows("#errTable tbody", data.g4g.errors.map((e) =>
+        `<tr><td><strong>${escapeHtml(e.type)}</strong></td><td class="num">${fmt(e.records)}</td><td class="num">${e.pct}%</td><td>${escapeHtml(e.contributor)}</td><td>${escapeHtml(e.resolution)}</td></tr>`
+      ).join(""), 5);
+    }
+
+    function renderAdoptions() {
+      const a = data.adoptions.summary;
+      const newest = data.adoptions.timeline[data.adoptions.timeline.length - 1] || {};
+      document.getElementById("adoptionKpis").innerHTML = [
+        { label: "Orgs Connected (Live)", value: a.orgsLive || "-", sub: a.orgsWip ? `+${a.orgsWip} in progress` : "" },
+        { label: "Objects Connected (Live)", value: a.objectsLive || "-", sub: a.objectsWip ? `+${a.objectsWip} in progress` : "" },
+        { label: "Org Pairs Onboarded", value: data.adoptions.timeline.length, sub: setting("Adoptions Since", "Adoptions Since Label") || "" },
+        { label: "Newest Adoption", value: setting("Newest Adoption") || newest.pair || "-", sub: setting("Newest Adoption Sub") || "" }
+      ].map((c) => `<div class="kpi"><div class="label">${escapeHtml(c.label)}</div><div class="value">${escapeHtml(c.value)}</div><div class="sub-value">${escapeHtml(c.sub)}</div></div>`).join("");
+
+      document.getElementById("adoptionTimeline").innerHTML = data.adoptions.timeline.map((t) => {
+        const count = t.items ? (String(t.items).match(/,/g) || []).length + 1 : 0;
+        return `<div class="tl-card ${t.wip ? "progress" : ""}">
+          <div class="tl-head"><span class="tl-name">${escapeHtml(t.pair)}${t.wip ? '<span class="tag wip">In Progress</span>' : ""}</span><span class="tl-count">~${count} objects</span></div>
+          <div class="tl-items">${escapeHtml(t.items)}</div>
+        </div>`;
+      }).join("") || `<div class="tl-card"><div class="tl-items">No rows loaded from the workbook.</div></div>`;
+
+      setTableRows("#retiredTable tbody", data.adoptions.retired.map((r) =>
+        `<tr><td><strong>${escapeHtml(r.pair)}</strong></td><td>${escapeHtml(r.items)}</td></tr>`
+      ).join(""), 2);
+    }
+
+    function renderFiltered() {
+      const rows = filterUtil();
+      renderUtilTable(rows);
+      renderVolCharts(rows);
+    }
+
+    function renderAll() {
+      renderHeroKpis();
+      renderFiltered();
+      renderOutsideSlackList();
+      renderOps();
+      renderG4G();
+      renderAdoptions();
+    }
+
+    ["objectFilter", "directionFilter", "pubFilter", "teamFilter"].forEach((id) => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", renderFiltered);
+      el.addEventListener("change", renderFiltered);
+    });
+
+    async function loadSelectedWorkbook(file) {
+      try {
+        showAuthActions(false);
+        showWorkbookActions(true);
+        setWorkbookName(file?.name || "");
+        setStatus("Loading workbook...");
+        const result = await loadWorkbookXlsxFile(file);
+        data = result.nextData;
+        applySettings();
+        renderAll();
+        setStatus(result.missing.length ? `Loaded workbook. Missing tabs: ${result.missing.join(", ")}.` : "Loaded workbook data.", result.missing.length ? "" : "ok");
+      } catch (error) {
+        applySettings();
+        renderAll();
+        setStatus(error.message || "Unable to load workbook data.", "error");
+      }
+    }
+
+    async function loadDefaultWorkbookUrl() {
+      const url = String(SHEET_CONFIG.source?.defaultWorkbookUrl || "").trim();
+      if (!url) return false;
+      try {
+        showAuthActions(false);
+        showWorkbookActions(true);
+        setWorkbookName(url.split("/").pop() || url);
+        setStatus("Loading workbook...");
+        const result = await loadWorkbookXlsxUrl(url);
+        data = result.nextData;
+        applySettings();
+        renderAll();
+        setStatus(result.missing.length ? `Loaded workbook. Missing tabs: ${result.missing.join(", ")}.` : "Loaded workbook data.", result.missing.length ? "" : "ok");
+        return true;
+      } catch (error) {
+        applySettings();
+        renderAll();
+        setStatus(error.message || "Unable to load workbook data.", "error");
+        return false;
+      }
+    }
+
+    async function prepareLocalWorkbookPrompt() {
+      applySettings();
+      renderAll();
+      showAuthActions(false);
+      showWorkbookActions(true);
+      const loaded = await loadDefaultWorkbookUrl();
+      if (!loaded) setStatus("Choose an XLSX workbook to load dashboard data.");
+    }
+
+    async function loadAppsScriptDashboard() {
+      try {
+        applySettings();
+        renderAll();
+        showAuthActions(false);
+        showWorkbookActions(false);
+        setStatus("Loading Google Sheets data...");
+        const result = await loadWorkbookAppsScript();
+        data = result.nextData;
+        applySettings();
+        renderAll();
+        setStatus(result.missing.length ? `Loaded data. Missing tabs: ${result.missing.join(", ")}.` : "Loaded Google Sheets data.", result.missing.length ? "" : "ok");
+      } catch (error) {
+        applySettings();
+        renderAll();
+        showAuthActions(false);
+        showWorkbookActions(false);
+        setStatus(error.message || "Unable to load Google Sheets data.", "error");
+      }
+    }
+
+    async function authorizeAndLoadSheets() {
+      try {
+        showAuthActions(true, true);
+        setStatus("Waiting for Google sign-in...");
+        const accessToken = await requestSheetsAccessToken();
+        setStatus("Loading private Google Sheets data...");
+        const result = await loadWorkbookOAuth(accessToken);
+        data = result.nextData;
+        applySettings();
+        renderAll();
+        showAuthActions(false);
+        setStatus(result.missing.length ? `Loaded data. Missing tabs: ${result.missing.join(", ")}.` : "Loaded private Google Sheets data.", result.missing.length ? "" : "ok");
+      } catch (error) {
+        showAuthActions(true, !isOAuthConfigured());
+        setStatus(error.message || "Unable to load Google Sheets data.", "error");
+      }
+    }
+
+    function prepareOAuthPrompt() {
+      applySettings();
+      renderAll();
+      showAuthActions(true, !isOAuthConfigured());
+      if (!isOAuthConfigured()) {
+        setStatus("OAuth mode is enabled. Add a Google OAuth Web Client ID in SHEET_CONFIG.auth.oauthClientId.", "error");
+        return;
+      }
+      setStatus("Sign in to grant read-only access to this Google Sheet.");
+    }
+
+    async function boot() {
+      const mode = getAuthMode();
+      if (mode === "appsscript" || mode === "apps-script" || mode === "script") {
+        loadAppsScriptDashboard();
+        return;
+      }
+      if (mode === "localxlsx" || mode === "xlsx" || mode === "local") {
+        prepareLocalWorkbookPrompt();
+        return;
+      }
+      if (mode === "oauth") {
+        prepareOAuthPrompt();
+        return;
+      }
+      try {
+        setStatus("Loading Google Sheets data...");
+        const result = await loadWorkbook();
+        data = result.nextData;
+        applySettings();
+        renderAll();
+        setStatus(result.missing.length ? `Loaded data. Missing tabs: ${result.missing.join(", ")}.` : "Loaded Google Sheets data.", result.missing.length ? "" : "ok");
+      } catch (error) {
+        if (mode === "auto" && isOAuthConfigured()) {
+          prepareOAuthPrompt();
+          setStatus("Anonymous access did not work. Sign in to grant read-only access to this Google Sheet.");
+          return;
+        }
+        applySettings();
+        renderAll();
+        showAuthActions(mode === "auto", !isOAuthConfigured());
+        setStatus(error.message || "Unable to load Google Sheets data.", "error");
+      }
+    }
+
+    document.getElementById("xlsxFile")?.addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (file) loadSelectedWorkbook(file);
+    });
+    document.getElementById("authorizeSheets")?.addEventListener("click", authorizeAndLoadSheets);
+    boot();
+  </script>
 </body>
 </html>
